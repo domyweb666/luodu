@@ -8,7 +8,6 @@ struct MainView: View {
     @State private var newName = ""
     @State private var showShelf = false
     @State private var showReader = false
-    @State private var readerStart = 0
 
     /// 這次選的訊號
     @State private var selected: Set<String> = []
@@ -45,7 +44,7 @@ struct MainView: View {
                     book: book,
                     content: content,
                     showChips: store.count(of: book.id) >= 3,
-                    startPage: readerStart
+                    startPage: MainView.readerStartPage
                 ) { signals in
                     logRead(book, signals: signals)
                 }
@@ -56,8 +55,7 @@ struct MainView: View {
         }
         .onAppear {
             #if DEBUG
-            if let start = DebugLaunch.readerPage, let book = store.currentBook, store.hasPages(book) {
-                readerStart = start
+            if DebugLaunch.readerPage != nil, let book = store.currentBook, store.hasPages(book) {
                 showReader = true
             }
             #endif
@@ -65,6 +63,15 @@ struct MainView: View {
     }
 
     private var child: String { store.data.child }
+
+    /// 翻書一律從第 1 頁開始。雲端截圖時才會用啟動參數指定別頁。
+    private static var readerStartPage: Int {
+        #if DEBUG
+        return DebugLaunch.readerPage ?? 0
+        #else
+        return 0
+        #endif
+    }
 
     private func resetTransient() {
         selected = []
@@ -173,7 +180,6 @@ struct MainView: View {
 
             if store.hasPages(book) {
                 Button("開始念") {
-                    readerStart = 0
                     showReader = true
                 }
                 .buttonStyle(PrimaryButtonStyle())
