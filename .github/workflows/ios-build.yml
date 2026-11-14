@@ -55,7 +55,7 @@ jobs:
           shot() {
             local name="$1"; shift
             xcrun simctl launch "$SIM_UDID" "$APP_ID" "$@"
-            sleep 5
+            sleep 8
             xcrun simctl io "$SIM_UDID" screenshot "shots/$name.png"
             xcrun simctl terminate "$SIM_UDID" "$APP_ID" || true
           }
