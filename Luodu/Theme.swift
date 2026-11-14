@@ -136,3 +136,15 @@ struct FlowLayout: Layout {
         }
     }
 }
+
+/// 灰色次要按鈕
+struct SecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(Color.primary)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(Color.fillGray, in: Capsule())
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+    }
+}

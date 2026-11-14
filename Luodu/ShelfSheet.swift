@@ -21,6 +21,9 @@ struct ShelfSheet: View {
     @State private var deleteTarget: Book?
     @State private var showDelete = false
 
+    @Environment(BookImporter.self) private var importer
+    @State private var showBookImporter = false
+
     private var trimmedName: String {
         newName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -76,6 +79,14 @@ struct ShelfSheet: View {
                     .buttonStyle(PrimaryButtonStyle(height: 52, fontSize: 17))
                     .disabled(trimmedName.isEmpty)
                     .padding(.top, 14)
+
+                Button("加一本做好的書檔") {
+                    showBookImporter = true
+                }
+                .font(.system(size: 15))
+                .foregroundStyle(Color.secondary)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .padding(.top, 6)
             }
             .padding(.horizontal, 16)
             .padding(.top, 28)
@@ -92,6 +103,11 @@ struct ShelfSheet: View {
                 if let cover { store.setCover(id, cover: cover) }
                 coverItem = nil
             }
+        }
+        .fileImporter(isPresented: $showBookImporter, allowedContentTypes: [.luoduBook, .json, .data]) { result in
+            guard case .success(let url) = result else { return }
+            importer.open(url, delay: 0.6)
+            dismiss()
         }
         .alert("改書名", isPresented: $showRename) {
             TextField("書名", text: $renameText)

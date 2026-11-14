@@ -18,6 +18,7 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: 蘿讀
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
@@ -29,7 +30,10 @@ targets:
   LuoduTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [LuoduTests]
+    sources:
+      - LuoduTests
+      - path: samples/red-ball.luodubook
+        buildPhase: resources
     dependencies:
       - target: Luodu
     settings:

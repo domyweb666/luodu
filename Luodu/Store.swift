@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 // 欄位名稱與網頁原型的 localStorage 格式一致（index.html:142），
 // 原型匯出的備份檔可以直接讀進來。
@@ -11,6 +12,9 @@ struct Book: Codable, Identifiable, Equatable {
     var cover: String?
     var pulled: Bool
     var pulledAt: Double?
+    /// 從書檔匯入的書才有：書檔的代號、頁數。只打書名的書是 nil。
+    var packageId: String? = nil
+    var pageCount: Int? = nil
 }
 
 struct ReadLog: Codable, Identifiable, Equatable {
@@ -38,6 +42,8 @@ extension Book {
         cover = try c.decodeIfPresent(String.self, forKey: .cover)
         pulled = try c.decodeIfPresent(Bool.self, forKey: .pulled) ?? false
         pulledAt = try c.decodeIfPresent(Double.self, forKey: .pulledAt)
+        packageId = try c.decodeIfPresent(String.self, forKey: .packageId)
+        pageCount = try c.decodeIfPresent(Int.self, forKey: .pageCount)
     }
 }
 
@@ -138,8 +144,81 @@ final class Store {
         save()
     }
 
-    /// 連這本書的所有紀錄一起刪
+    // MARK: 書頁（從書檔匯入的書）
+
+    /// 書頁存在資料檔旁邊的資料夾，一本書一個子資料夾
+    var booksDir: URL {
+        let name = fileURL.deletingPathExtension().lastPathComponent + "-books"
+        return fileURL.deletingLastPathComponent().appendingPathComponent(name, isDirectory: true)
+    }
+
+    private func bookDir(_ bookId: String) -> URL {
+        booksDir.appendingPathComponent(bookId, isDirectory: true)
+    }
+
+    func pageImageURL(_ bookId: String, index: Int) -> URL {
+        bookDir(bookId).appendingPathComponent("p\(index + 1).img")
+    }
+
+    func content(of bookId: String) -> BookContent? {
+        let url = bookDir(bookId).appendingPathComponent("content.json")
+        guard let raw = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(BookContent.self, from: raw)
+    }
+
+    /// 這本書現在翻得開嗎。從備份還原的書只有紀錄、沒有書頁，會是 false。
+    func hasPages(_ book: Book) -> Bool {
+        (book.pageCount ?? 0) > 0 && content(of: book.id) != nil
+    }
+
+    func existingBook(forPackage packageId: String) -> Book? {
+        data.books.first { $0.packageId == packageId }
+    }
+
+    /// 把檢查過的書檔裝進來。書架上已經有同一個代號的書，就換掉書頁、紀錄留著。
+    @discardableResult
+    func install(_ package: BookPackage) throws -> Book {
+        let existing = existingBook(forPackage: package.id)
+        let bookId = existing?.id ?? "b" + UUID().uuidString
+        let dir = bookDir(bookId)
+        let fm = FileManager.default
+        try? fm.removeItem(at: dir)
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        do {
+            for (index, page) in package.pages.enumerated() {
+                try page.image.write(to: pageImageURL(bookId, index: index), options: .atomic)
+            }
+            let content = BookContent(
+                title: package.title,
+                pages: package.pages.map { BookContent.Page(text: $0.text, hint: $0.hint) }
+            )
+            try JSONEncoder().encode(content).write(to: dir.appendingPathComponent("content.json"), options: .atomic)
+        } catch {
+            try? fm.removeItem(at: dir)
+            throw error
+        }
+
+        let coverSource = package.cover ?? package.pages[0].image
+        let cover = UIImage(data: coverSource).flatMap { CoverImage.dataURL(from: $0) }
+
+        if let i = data.books.firstIndex(where: { $0.id == bookId }) {
+            data.books[i].name = package.title
+            data.books[i].pageCount = package.pages.count
+            data.books[i].cover = cover ?? data.books[i].cover
+        } else {
+            data.books.append(Book(
+                id: bookId, name: package.title, cover: cover, pulled: false, pulledAt: nil,
+                packageId: package.id, pageCount: package.pages.count
+            ))
+        }
+        data.current = bookId
+        save()
+        return data.books.first { $0.id == bookId }!
+    }
+
+    /// 連這本書的所有紀錄和書頁一起刪
     func deleteBook(_ bookId: String) {
+        try? FileManager.default.removeItem(at: bookDir(bookId))
         data.books.removeAll { $0.id == bookId }
         data.logs.removeAll { $0.bookId == bookId }
         if data.current == bookId { data.current = data.books.first?.id }
@@ -191,6 +270,7 @@ final class Store {
     }
 
     func wipe() {
+        try? FileManager.default.removeItem(at: booksDir)
         data = LuoduData()
         save()
     }

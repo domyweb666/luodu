@@ -3,3 +3,4 @@ xcodebuild.log
 DerivedData/
 .DS_Store
 *.luodubook
+!samples/red-ball.luodubook

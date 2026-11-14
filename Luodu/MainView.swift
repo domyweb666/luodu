@@ -7,6 +7,8 @@ struct MainView: View {
 
     @State private var newName = ""
     @State private var showShelf = false
+    @State private var showReader = false
+    @State private var readerStart = 0
 
     /// 這次選的訊號
     @State private var selected: Set<String> = []
@@ -37,8 +39,28 @@ struct MainView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .fullScreenCover(isPresented: $showReader) {
+            if let book = store.currentBook, let content = store.content(of: book.id) {
+                ReaderView(
+                    book: book,
+                    content: content,
+                    showChips: store.count(of: book.id) >= 3,
+                    startPage: readerStart
+                ) { signals in
+                    logRead(book, signals: signals)
+                }
+            }
+        }
         .onChange(of: store.currentBook?.id) { _, _ in
             resetTransient()
+        }
+        .onAppear {
+            #if DEBUG
+            if let start = DebugLaunch.readerPage, let book = store.currentBook, store.hasPages(book) {
+                readerStart = start
+                showReader = true
+            }
+            #endif
         }
     }
 
@@ -145,15 +167,29 @@ struct MainView: View {
             messageCard(canPull: canPull, tip: tip)
 
             if n >= 3 {
-                chips
+                SignalChips(selected: $selected, child: child)
                     .padding(.top, 12)
             }
 
-            Button(justDone == nil ? "念完了" : "又念了一次") {
-                logRead(book)
+            if store.hasPages(book) {
+                Button("開始念") {
+                    readerStart = 0
+                    showReader = true
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.top, 14)
+                Button(justDone == nil ? "沒翻書，直接記一次" : "又念了一次") {
+                    logRead(book, signals: SignalChips.ordered(selected))
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .padding(.top, 8)
+            } else {
+                Button(justDone == nil ? "念完了" : "又念了一次") {
+                    logRead(book, signals: SignalChips.ordered(selected))
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.top, 14)
             }
-            .buttonStyle(PrimaryButtonStyle())
-            .padding(.top, 14)
 
             if justDone != nil, lastLogId != nil {
                 Button("按錯了，收回這一次") {
@@ -219,44 +255,9 @@ struct MainView: View {
         .background(Color.card, in: RoundedRectangle(cornerRadius: 26))
     }
 
-    private var chips: some View {
-        FlowLayout(spacing: 8) {
-            ForEach(Rules.good, id: \.key) { s in
-                chip(s, isBad: false)
-            }
-            ForEach(Rules.bad, id: \.key) { s in
-                chip(s, isBad: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func chip(_ s: Rules.Signal, isBad: Bool) -> some View {
-        let on = selected.contains(s.key)
-        let background: Color = on ? (isBad ? Color.secondary : Color.mainGreen) : Color.card
-        let foreground: Color = on ? (isBad ? Color.card : Color.white) : (isBad ? Color.secondary : Color.primary)
-        return Button {
-            if on {
-                selected.remove(s.key)
-            } else {
-                selected.insert(s.key)
-            }
-        } label: {
-            Text(Rules.named(s.label, child: child))
-                .font(.system(size: 15, weight: on && !isBad ? .semibold : .regular))
-                .foregroundStyle(foreground)
-                .padding(.horizontal, 13)
-                .frame(height: 36)
-                .background(background, in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(on ? .isSelected : [])
-    }
-
     // MARK: 動作
 
-    private func logRead(_ book: Book) {
-        let signals = (Rules.good + Rules.bad).map(\.key).filter { selected.contains($0) }
+    private func logRead(_ book: Book, signals: [String]) {
         guard let log = store.logRead(signals: signals) else { return }
         selected = []
         lastLogId = log.id
