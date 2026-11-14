@@ -44,9 +44,52 @@ jobs:
             | tee xcodebuild.log | grep -E "error|warning: unre|Test Case|Test Suite|BUILD|TEST|\*\*" || true
           grep -q "TEST SUCCEEDED" xcodebuild.log
 
+      - name: Screenshots
+        run: |
+          APP_ID=app.luodu.ios
+          xcrun simctl boot "$SIM_UDID" || true
+          xcrun simctl bootstatus "$SIM_UDID" -b
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -type d -name Luodu.app -path "*Debug-iphonesimulator*" | head -1)
+          xcrun simctl install "$SIM_UDID" "$APP"
+          mkdir -p shots
+          shot() {
+            local name="$1"; shift
+            xcrun simctl launch "$SIM_UDID" "$APP_ID" "$@"
+            sleep 5
+            xcrun simctl io "$SIM_UDID" screenshot "shots/$name.png"
+            xcrun simctl terminate "$SIM_UDID" "$APP_ID" || true
+          }
+          seed() {
+            local data
+            data=$(xcrun simctl get_app_container "$SIM_UDID" "$APP_ID" data)
+            mkdir -p "$data/Library/Application Support"
+            python3 ci/seed.py "$@" > "$data/Library/Application Support/luodu.v1.json"
+          }
+          shot 1-first
+          seed d3 小芽
+          shot 2-main-12 -startPage 1
+          shot 3-field -startPage 0
+          shot 4-settings -startPage 2
+          seed d2
+          shot 5-main-pullable -startPage 1
+          seed d5
+          shot 6-main-seed -startPage 1
+          seed d0
+          shot 7-main-pulled -startPage 1
+          xcrun simctl ui "$SIM_UDID" appearance dark
+          seed d4 小芽
+          shot 8-main-dark -startPage 1
+
       - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xcodebuild-log
           path: xcodebuild.log
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: shots

@@ -2,7 +2,8 @@ import SwiftUI
 
 /// 三頁左右滑：蘿蔔田／主畫面／設定（index.html:127-132, 377-386）
 struct RootView: View {
-    @State private var page = 1
+    /// 預設開在主畫面。雲端截圖時用啟動參數 `-startPage 0` 指定別頁。
+    @State private var page = Int(UserDefaults.standard.string(forKey: "startPage") ?? "") ?? 1
 
     private let names = ["蘿蔔田", "主畫面", "設定"]
 
