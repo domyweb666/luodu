@@ -31,6 +31,26 @@ struct SettingsView: View {
     @State private var showImportError = false
     @State private var wipeArmed = false
 
+    @AppStorage("reminderOn") private var reminderOn = false
+    @AppStorage("reminderMinutes") private var reminderMinutes = Reminder.defaultMinutes
+    @State private var showReminderDenied = false
+
+    private func setReminder(_ on: Bool) {
+        guard on else {
+            reminderOn = false
+            Reminder.disable()
+            return
+        }
+        Task { @MainActor in
+            if await Reminder.enable(minutes: reminderMinutes) {
+                reminderOn = true
+            } else {
+                reminderOn = false
+                showReminderDenied = true
+            }
+        }
+    }
+
     private var child: String { store.data.child }
 
     var body: some View {
@@ -64,6 +84,33 @@ struct SettingsView: View {
                 .frame(minHeight: 56)
                 .background(Color.card, in: RoundedRectangle(cornerRadius: 26))
                 note("填了之後，畫面上的「她」會換成這個名字。")
+
+                VStack(spacing: 0) {
+                    Toggle("睡前提醒", isOn: Binding(
+                        get: { reminderOn },
+                        set: { setReminder($0) }
+                    ))
+                    .font(.system(size: 17))
+                    .tint(Color.mainGreen)
+                    .padding(.horizontal, 18)
+                    .frame(minHeight: 56)
+                    if reminderOn {
+                        Divider().padding(.leading, 18)
+                        DatePicker("時間", selection: Binding(
+                            get: { Reminder.date(minutes: reminderMinutes) },
+                            set: { newValue in
+                                reminderMinutes = Reminder.minutes(from: newValue)
+                                Reminder.schedule(minutes: reminderMinutes)
+                            }
+                        ), displayedComponents: .hourAndMinute)
+                        .font(.system(size: 17))
+                        .padding(.horizontal, 18)
+                        .frame(minHeight: 56)
+                    }
+                }
+                .background(Color.card, in: RoundedRectangle(cornerRadius: 26))
+                .padding(.top, 18)
+                note("每天這個時間提醒一次。沒念也不會怎樣。")
 
                 sectionTitle("念法，五個字")
                 VStack(alignment: .leading, spacing: 8) {
@@ -121,6 +168,22 @@ struct SettingsView: View {
         }
         .onDisappear {
             wipeArmed = false
+        }
+        .task {
+            // 使用者事後在 iPhone 設定裡關掉通知的話，這裡的開關跟著關
+            if reminderOn, await Reminder.isDenied() {
+                reminderOn = false
+            }
+        }
+        .alert("通知沒有打開", isPresented: $showReminderDenied) {
+            Button("去設定") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("先不用", role: .cancel) {}
+        } message: {
+            Text("要到 iPhone 的「設定」裡允許蘿讀傳送通知，再回來打開睡前提醒。")
         }
         .fileExporter(
             isPresented: $exporting,

@@ -269,6 +269,11 @@ struct MainView: View {
         lastLogId = log.id
         let n = store.count(of: book.id)
         justDone = Rules.doneText(n: n, totalLogs: store.data.logs.count)
+        if n == 3 {
+            Haptics.sprout()
+        } else {
+            Haptics.leaf()
+        }
         guard !reduceMotion else { return }
         var instant = Transaction()
         instant.disablesAnimations = true
@@ -324,6 +329,7 @@ struct MainView: View {
 
     private func finishPull(book: Book, n: Int) {
         store.pull(book.id)
+        Haptics.pulled()
         pull = 0
         lastLogId = nil
         justDone = "拔起來了。\(n) 次。"
