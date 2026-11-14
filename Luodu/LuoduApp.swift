@@ -6,7 +6,7 @@ struct LuoduApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainView()
+            RootView()
                 .environment(store)
         }
     }
