@@ -111,13 +111,14 @@ struct MainView: View {
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
                     Text("›")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 .padding(.leading, 6)
                 .padding(.trailing, 14)
                 .padding(.vertical, 6)
                 .background(.regularMaterial, in: Capsule())
             }
+            .buttonStyle(.plain)
             .accessibilityLabel("換書，現在是\(book.name)")
 
             stage(book: book, n: n, canPull: canPull)

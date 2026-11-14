@@ -58,7 +58,7 @@ struct CoverView: View {
             } else {
                 Text(String(book.name.prefix(1)))
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.fillGray)
             }
