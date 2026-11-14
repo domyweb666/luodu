@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="蘿讀">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>蘿讀（手感原型）</title>
+<style>
+:root{
+  --bg:#F2F2F7; --card:#FFFFFF; --text:#000; --sub:rgba(60,60,67,.6); --sep:rgba(60,60,67,.18);
+  --main:#34C759; --mainText:#fff; --fill:rgba(120,120,128,.12); --glass:rgba(255,255,255,.72);
+  --soil:#9A6B45; --soil2:#7E5535; --leaf:#4FBF67; --leaf2:#2FA04C; --radish:#FBF7EC; --radishLine:#E4DCC8;
+  --warn:#FF9500;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#000; --card:#1C1C1E; --text:#fff; --sub:rgba(235,235,245,.6); --sep:rgba(84,84,88,.6);
+    --main:#30D158; --fill:rgba(120,120,128,.24); --glass:rgba(44,44,46,.72);
+    --soil:#6F4B30; --soil2:#573923; --leaf:#43B35C; --leaf2:#2A8F43; --radish:#EFE9DA; --radishLine:#CFC6AF; --warn:#FF9F0A; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,"PingFang TC","Noto Sans TC",system-ui,sans-serif;font-weight:400;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+input{font:inherit;color:inherit}
+.pager{display:flex;height:100dvh;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none}
+.pager::-webkit-scrollbar{display:none}
+.page{flex:0 0 100vw;height:100dvh;scroll-snap-align:center;scroll-snap-stop:always;overflow-y:auto;
+  padding:calc(env(safe-area-inset-top) + 44px) 16px calc(env(safe-area-inset-bottom) + 24px)}
+.dots{position:fixed;top:calc(env(safe-area-inset-top) + 14px);left:0;right:0;display:flex;justify-content:center;gap:8px;z-index:5}
+.dots button{width:7px;height:7px;border-radius:50%;background:var(--sub);opacity:.35;transition:opacity .2s,transform .2s}
+.dots button::after{content:"";position:absolute;inset:-12px}
+.dots button{position:relative}
+.dots button.on{opacity:1;transform:scale(1.25)}
+h1{font-size:34px;font-weight:700;margin:6px 4px 2px;letter-spacing:.2px}
+.lead{font-size:17px;color:var(--sub);margin:0 4px 18px}
+h2{font-size:22px;font-weight:700;margin:26px 4px 10px}
+.card{background:var(--card);border-radius:26px;overflow:hidden}
+.row{min-height:56px;display:flex;align-items:center;gap:12px;padding:10px 18px;position:relative;font-size:17px;width:100%;text-align:left}
+.row + .row::before{content:"";position:absolute;left:18px;right:0;top:0;height:.5px;background:var(--sep)}
+.row .val{margin-left:auto;color:var(--sub);white-space:nowrap}
+.row .chev{color:var(--sub);opacity:.6;font-size:20px;margin-left:4px}
+.note{font-size:13px;color:var(--sub);margin:8px 18px 0;line-height:1.5}
+
+/* 主畫面 */
+#main{display:flex;flex-direction:column;overflow:hidden}
+.bookpill{align-self:center;display:flex;align-items:center;gap:10px;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-radius:999px;padding:6px 14px 6px 6px;max-width:86%;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.cover{width:36px;height:36px;border-radius:10px;background:var(--fill);display:grid;place-items:center;font-weight:700;font-size:16px;color:var(--sub);background-size:cover;background-position:center;flex:none}
+.bookpill .nm{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bookpill .chev{color:var(--sub)}
+.stage{flex:1;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
+.stage svg{width:min(76vw,310px);max-height:100%;height:auto;overflow:visible;touch-action:pan-x}
+.stage.pullable svg{touch-action:none}
+.count{font-size:15px;color:var(--sub);margin:4px 0 10px;text-align:center}
+.msg{padding:16px 18px;min-height:86px;display:flex;flex-direction:column;justify-content:center}
+.msg .big{font-size:22px;font-weight:700;line-height:1.3}
+.msg .tipk{font-size:13px;color:var(--sub);margin-bottom:4px}
+.msg .tip{font-size:17px;line-height:1.45}
+.msg .big + .tipk{margin-top:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 2px}
+.chip{height:36px;padding:0 13px;border-radius:999px;background:var(--card);font-size:15px;color:var(--text);transition:background .15s,color .15s,transform .1s}
+.chip.bad{color:var(--sub)}
+.chip.on{background:var(--main);color:#fff;font-weight:600}
+.chip.bad.on{background:var(--sub);color:var(--card)}
+.chip:active{transform:scale(.96)}
+.primary{margin-top:14px;height:58px;border-radius:999px;background:var(--main);color:#fff;font-size:20px;font-weight:700;width:100%;transition:transform .1s}
+.primary:active{transform:scale(.97)}
+.primary[disabled]{opacity:.35}
+.first{margin-top:10vh}
+.first h1{font-size:30px}
+.biginput{width:100%;font-size:22px;padding:18px;border:0;border-radius:26px;background:var(--card);outline:none;margin-top:14px}
+.ghost{height:44px;padding:0 16px;border-radius:999px;background:var(--fill);font-size:15px;margin-top:10px}
+
+/* 動畫 */
+@keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.25)}80%{transform:scale(.92)}100%{transform:scale(1)}}
+@keyframes wig{0%,100%{transform:rotate(0)}25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
+@keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.leafnew{animation:pop .55s cubic-bezier(.3,1.4,.5,1) both;transform-box:fill-box;transform-origin:50% 100%}
+.wig{animation:wig .5s ease both;transform-box:fill-box;transform-origin:50% 100%}
+.sway{animation:sway 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.fadeup{animation:fadeup .35s ease both}
+@media (prefers-reduced-motion: reduce){.leafnew,.wig,.sway,.fadeup{animation:none}}
+
+/* 蘿蔔田 */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.plot{background:var(--card);border-radius:22px;padding:8px 6px 10px;text-align:center}
+.plot svg{width:100%;height:92px;overflow:hidden}
+.plot .nm{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+.plot .ct{font-size:12px;color:var(--sub)}
+.wall{display:flex;align-items:flex-end;gap:6px;overflow-x:auto;padding:16px 14px 12px;scrollbar-width:none}
+.wall::-webkit-scrollbar{display:none}
+.wall .r{flex:none;width:74px;text-align:center}
+.wall .r svg{width:74px;overflow:visible}
+.wall .nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wall .ct{font-size:12px;color:var(--sub)}
+.empty{padding:22px 18px;color:var(--sub);font-size:15px;line-height:1.5}
+.rev{padding:14px 18px;font-size:15px;line-height:1.55}
+.rev b{font-weight:600}
+.rev + .rev{border-top:.5px solid var(--sep)}
+.rev .q{color:var(--sub);margin-top:6px}
+
+/* 底部彈出卡 */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .25s;z-index:10}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-radius:34px 34px 0 0;z-index:11;
+  padding:10px 16px calc(env(safe-area-inset-bottom) + 20px);transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.9,.3,1);max-height:82dvh;overflow-y:auto}
+.sheet.on{transform:none}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--sub);opacity:.4;margin:0 auto 14px}
+.sheet h3{font-size:22px;font-weight:700;margin:0 4px 12px}
+.addrow{display:flex;gap:8px;margin-top:14px}
+.addrow input[type=text]{flex:1;min-width:0;font-size:20px;padding:14px 16px;border:0;border-radius:18px;background:var(--card);outline:none}
+.addrow .pic{width:54px;border-radius:18px;background:var(--card);display:grid;place-items:center;background-size:cover;background-position:center}
+.sheet .primary{height:52px;font-size:17px}
+.switch{width:51px;height:31px;border-radius:999px;background:var(--fill);position:relative;margin-left:auto;opacity:.5}
+.switch::after{content:"";position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.five{padding:14px 18px;font-size:15px;line-height:1.7}
+.five b{display:inline-block;width:1.6em;font-weight:700;color:var(--main)}
+.danger{color:#FF3B30}
+</style>
+</head>
+<body>
+<div class="dots" id="dots"><button data-i="0" aria-label="蘿蔔田"></button><button data-i="1" aria-label="主畫面"></button><button data-i="2" aria-label="設定"></button></div>
+<div class="pager" id="pager">
+  <section class="page" id="field"></section>
+  <section class="page" id="main"></section>
+  <section class="page" id="settings"></section>
+</div>
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"></div>
+<input type="file" id="photo" accept="image/*" hidden>
+<input type="file" id="importer" accept="application/json,.json" hidden>
+
+<script>
+(function(){
+'use strict';
+var KEY='luodu.v1';
+var mem={books:[],logs:[],current:null,child:''};
+function load(){try{var s=localStorage.getItem(KEY);if(s){var d=JSON.parse(s);if(d&&d.books)mem=d;}}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(mem));}catch(e){}}
+load();
+
+var GOOD=[['jie','她接話了'],['zhi','她指了'],['zai','她說再一次'],['na','她自己去拿的'],['life','生活裡說了書裡的詞'],['bei','她搶先念完']];
+var BAD=[['skip','有一頁被跳過'],['run','念到一半跑掉']];
+var LABEL={};GOOD.concat(BAD).forEach(function(s){LABEL[s[0]]=s[1];});
+
+var DONE=['又一片。','同一本，再一次。這就對了。','她認得這本了。','葉子多一片。','今天也念了。','念過的書，她會自己走回來。','再一次，是她在學。','這一片是今天的。','好，收工。','又長了一點。','書沒變，她變了一點。','一樣的書，不一樣的一天。','今晚這片，記下了。','土裡的也在長。','念完了，可以關燈了。','這片葉子長得不錯。','這本越來越熟了。','慢慢來，葉子不會跑。','多念一次，不嫌多。','記好了。','今天這一次，算數。','再念一次也可以。'];
+var WORDS=[
+ {k:'等',t:['念到要她接的地方，停三秒。','問完先不要自己回答，數到三。']},
+ {k:'接',t:['她說什麼都接住，不說「不對」。','她說錯了，直接把對的說一次就好。']},
+ {k:'加',t:['把她的話多加一個詞說回去。她說「鞋鞋」，你說「粉紅色的鞋子」。']},
+ {k:'誇',t:['誇具體的事：「你找到了！」']},
+ {k:'再',t:['請她再說一次。她不說也沒關係。']}
+];
+var LIFE='念完問她一題真的：書裡那個東西，家裡的在哪裡？';
+
+var sel={};          // 這次選的訊號
+var justDone=null;   // 剛按完的完成語
+var sheetPic=null;
+
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function book(id){for(var i=0;i<mem.books.length;i++)if(mem.books[i].id===id)return mem.books[i];return null;}
+function logsOf(id){return mem.logs.filter(function(l){return l.bookId===id;});}
+function countOf(id){return logsOf(id).length;}
+function sigCount(id,k){return logsOf(id).filter(function(l){return l.signals.indexOf(k)>=0;}).length;}
+function cur(){return book(mem.current)||mem.books[0]||null;}
+function pullable(b){return b&&!b.pulled&&sigCount(b.id,'bei')>=2;}
+
+function tipFor(b){
+  var n=countOf(b.id);
+  if(n<2)return{k:'',t:'前三次只念不問，她在認識這本書。'};
+  if(n===2)return{k:'',t:'再一次就冒芽。還是只念不問。'};
+  if(n>3&&n%5===0)return{k:'去找真的',t:LIFE};
+  var st=Math.min(4,Math.floor(sigCount(b.id,'jie')/3));
+  var w=WORDS[st];
+  return{k:w.k,t:w.t[n%w.t.length]};
+}
+
+/* ---------- 蘿蔔（占位圖形，之後換黏土插圖） ---------- */
+var ANG=[0,-24,24,-44,44,-12,12,-34,34,-56,56,-6,18,-18,40,-40];var CP=0;
+function leafPath(len,wid){return 'M0 0 C '+(-wid)+' '+(-len*0.35)+', '+(-wid*0.9)+' '+(-len*0.85)+', 0 '+(-len)+' C '+(wid*0.9)+' '+(-len*0.85)+', '+wid+' '+(-len*0.35)+', 0 0 Z';}
+function leaves(n,newest){
+  var out='',m=Math.min(n,36),scale=1+Math.min(n,60)/140;
+  for(var i=0;i<m;i++){
+    var a=ANG[i%16]+((i*7)%9-4), len=(38+(i%4)*9)*scale, wid=9+(i%3)*2;
+    var cls=(newest&&i===m-1)?' class="leafnew"':'';
+    out+='<g transform="rotate('+a.toFixed(1)+')"><path'+cls+' d="'+leafPath(len,wid)+'" fill="'+(i%2?'var(--leaf)':'var(--leaf2)')+'"/></g>';
+  }
+  return out;
+}
+function bodyLen(n){return 46+Math.min(n,70)*1.5;}
+function bodyPath(L){var w=24;return 'M'+(-w)+' 6 C '+(-w-4)+' '+(L*0.5)+', '+(-8)+' '+(L*0.92)+', 0 '+L+' C 8 '+(L*0.92)+', '+(w+4)+' '+(L*0.5)+', '+w+' 6 C '+w+' -6, '+(-w)+' -6, '+(-w)+' 6 Z';}
+function face(){return '<circle cx="-8" cy="20" r="2.6" fill="#3A2E25"/><circle cx="8" cy="20" r="2.6" fill="#3A2E25"/><ellipse cx="-14" cy="27" rx="4.5" ry="2.8" fill="#F4A6A6" opacity=".7"/><ellipse cx="14" cy="27" rx="4.5" ry="2.8" fill="#F4A6A6" opacity=".7"/><path d="M-3 27 Q0 30 3 27" stroke="#3A2E25" stroke-width="1.6" fill="none" stroke-linecap="round"/>';}
+function plantSVG(n,o){
+  o=o||{};var L=bodyLen(n),lv=Math.max(0,n-3);
+  var s='<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">';
+  s+='<ellipse cx="100" cy="186" rx="86" ry="10" fill="rgba(0,0,0,.06)"/>';
+  if(n>=3){
+    var cp='cp'+(++CP);
+    s+='<clipPath id="'+cp+'"><rect x="-200" y="-600" width="600" height="800"/></clipPath><g clip-path="url(#'+cp+')"><g id="'+(o.id||'')+'" transform="translate(100,'+(150-(o.pull||0))+')"><g class="'+(o.wig?'wig':(o.sway?'sway':''))+'">';
+    s+='<path d="'+bodyPath(L)+'" fill="var(--radish)" stroke="var(--radishLine)" stroke-width="1.5"/>'+face();
+    if(n===3)s+='<g transform="rotate(-28)"><path'+(o.newest?' class="leafnew"':'')+' d="'+leafPath(22,8)+'" fill="var(--leaf)"/></g><g transform="rotate(28)"><path'+(o.newest?' class="leafnew"':'')+' d="'+leafPath(22,8)+'" fill="var(--leaf2)"/></g>';
+    else s+=leaves(lv,o.newest);
+    s+='</g></g></g>';
+  }
+  s+='<path d="M10 200 L10 176 C 40 150, 160 150, 190 176 L190 200 Z" fill="var(--soil)"/>';
+  s+='<path d="M10 200 L10 186 C 50 172, 150 172, 190 186 L190 200 Z" fill="var(--soil2)" opacity=".55"/>';
+  if(n<3){
+    s+='<ellipse cx="100" cy="162" rx="9" ry="6" fill="#E9D9A8" stroke="#C9B77F" stroke-width="1.2" class="'+(o.wig?'wig':'')+'"/>';
+    for(var i=0;i<3;i++)s+='<circle cx="'+(86+i*14)+'" cy="182" r="3" fill="'+(i<n?'#E9D9A8':'rgba(255,255,255,.22)')+'"/>';
+  }
+  return s+'</svg>';
+}
+function pulledSVG(n){
+  var L=bodyLen(n),top=74,h=top+L+8;
+  return '<svg viewBox="0 0 80 '+h.toFixed(0)+'" height="'+(h*0.9).toFixed(0)+'" xmlns="http://www.w3.org/2000/svg"><g transform="translate(40,'+top+') scale(.8)"><path d="'+bodyPath(L)+'" fill="var(--radish)" stroke="var(--radishLine)" stroke-width="1.5"/>'+face()+leaves(Math.max(2,Math.min(n-3,14)))+'</g></svg>';
+}
+
+/* ---------- 主畫面 ---------- */
+function renderMain(){
+  var el=$('main'),b=cur();
+  if(!b){
+    el.innerHTML='<div class="first"><h1>今晚念的是哪一本？</h1><p class="lead">打書名就好，之後再補封面。</p>'+
+      '<input class="biginput" id="firstName" type="text" placeholder="書名" autocomplete="off" enterkeyhint="done">'+
+      '<button class="primary" id="firstAdd" disabled>種下去</button></div>';
+    var inp=$('firstName'),btn=$('firstAdd');
+    inp.oninput=function(){btn.disabled=!inp.value.trim();};
+    inp.onkeydown=function(e){if(e.key==='Enter'&&inp.value.trim())btn.click();};
+    btn.onclick=function(){addBook(inp.value.trim(),null);};
+    return;
+  }
+  var n=countOf(b.id),tip=tipFor(b),pl=pullable(b);
+  var h='<button class="bookpill" id="pick"><span class="cover"'+(b.cover?' style="background-image:url('+b.cover+')"':'')+'>'+(b.cover?'':esc(b.name.slice(0,1)))+'</span><span class="nm">'+esc(b.name)+'</span><span class="chev">›</span></button>';
+  h+='<div class="stage'+(pl?' pullable':'')+'" id="stage">';
+  if(b.pulled)h+=pulledSVG(n).replace('<svg ','<svg style="width:auto;height:min(38vh,300px)" ');
+  else h+=plantSVG(n,{id:'rad',wig:!!justDone,newest:!!justDone,sway:pl&&!justDone});
+  h+='</div>';
+  h+='<div class="count">'+(n===0?'還沒念過':(n<3?'第 '+n+' 次 · 還在土裡':'念了 '+n+' 次'))+(b.pulled?' · 已經拔起來了':'')+'</div>';
+  h+='<div class="card msg'+(justDone?' fadeup':'')+'">';
+  if(pl&&!justDone)h+='<div class="big">可以拔了。</div><div class="tipk">她搶先念完兩次了</div><div class="tip">按住蘿蔔往上拖。還想留在土裡也可以。</div>';
+  else{
+    if(justDone)h+='<div class="big">'+esc(justDone)+'</div>';
+    h+='<div class="tipk">'+(justDone?'明晚試試':'今晚試試')+(tip.k?'：'+tip.k:'')+'</div><div class="tip">'+esc(tip.t)+'</div>';
+  }
+  h+='</div>';
+  if(n>=3){
+    h+='<div class="chips">';
+    GOOD.forEach(function(s){h+='<button class="chip'+(sel[s[0]]?' on':'')+'" data-k="'+s[0]+'">'+s[1]+'</button>';});
+    BAD.forEach(function(s){h+='<button class="chip bad'+(sel[s[0]]?' on':'')+'" data-k="'+s[0]+'">'+s[1]+'</button>';});
+    h+='</div>';
+  }
+  h+='<button class="primary" id="done">'+(justDone?'又念了一次':'念完了')+'</button>';
+  el.innerHTML=h;
+  $('pick').onclick=openShelf;
+  $('done').onclick=logRead;
+  Array.prototype.forEach.call(el.querySelectorAll('.chip'),function(c){c.onclick=function(){var k=c.dataset.k;sel[k]=!sel[k];c.classList.toggle('on',!!sel[k]);};});
+  var st=$('stage');
+  if(pl)bindPull(st,b,n);
+  else st.onclick=function(){var g=st.querySelector('svg g g, svg ellipse + ellipse');if(g){g.classList.remove('wig');void g.getBoundingClientRect();g.classList.add('wig');}};
+}
+function logRead(){
+  var b=cur();if(!b)return;
+  var sig=Object.keys(sel).filter(function(k){return sel[k];});
+  mem.logs.push({id:Date.now()+''+Math.random().toString(36).slice(2,6),bookId:b.id,ts:Date.now(),signals:sig});
+  save();sel={};
+  var n=countOf(b.id);
+  justDone=n===1?'種下去了。':n===2?'還在土裡，正常的。':n===3?'第三次，冒芽了。':DONE[(n*7+mem.logs.length)%DONE.length];
+  renderMain();renderField();
+}
+function bindPull(st,b,n){
+  var max=bodyLen(n)+26,y0=null,pull=0,g=st.querySelector('#rad');
+  if(!g)return;
+  function set(p){pull=Math.max(0,Math.min(max,p));g.setAttribute('transform','translate(100,'+(150-pull)+')');}
+  st.onpointerdown=function(e){y0=e.clientY;var inner=g.firstChild;if(inner)inner.classList.remove('sway');st.setPointerCapture&&st.setPointerCapture(e.pointerId);};
+  st.onpointermove=function(e){if(y0===null)return;set((y0-e.clientY)*0.9);};
+  st.onpointerup=st.onpointercancel=function(){
+    if(y0===null)return;y0=null;
+    if(pull>max*0.55){b.pulled=true;b.pulledAt=Date.now();save();justDone='拔起來了。'+countOf(b.id)+' 次。';renderMain();renderField();}
+    else{var from=pull,t0=performance.now();(function back(t){var k=Math.min(1,(t-t0)/220);set(from*(1-k)*(1-k));if(k<1)requestAnimationFrame(back);})(t0);}
+  };
+}
+
+/* ---------- 書架 ---------- */
+function addBook(name,cover){
+  var b={id:'b'+Date.now(),name:name,cover:cover||null,pulled:false};
+  mem.books.push(b);mem.current=b.id;save();justDone=null;sel={};closeSheet();renderAll();
+}
+function openShelf(){
+  sheetPic=null;
+  var h='<div class="grab"></div><h3>在念的書</h3><div class="card">';
+  mem.books.forEach(function(b){
+    h+='<button class="row" data-id="'+b.id+'"><span class="cover"'+(b.cover?' style="background-image:url('+b.cover+')"':'')+'>'+(b.cover?'':esc(b.name.slice(0,1)))+'</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(b.name)+'</span><span class="val">'+countOf(b.id)+' 次'+(b.id===mem.current?' ✓':'')+'</span></button>';
+  });
+  h+='</div><div class="addrow"><input type="text" id="newName" placeholder="加一本：書名" autocomplete="off" enterkeyhint="done"><button class="pic" id="newPic" aria-label="拍封面"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sub)"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button></div>'+
+     '<button class="primary" id="newAdd" disabled>種下去</button>';
+  $('sheet').innerHTML=h;
+  Array.prototype.forEach.call($('sheet').querySelectorAll('.row'),function(r){r.onclick=function(){mem.current=r.dataset.id;save();justDone=null;sel={};closeSheet();renderMain();};});
+  var inp=$('newName'),btn=$('newAdd');
+  inp.oninput=function(){btn.disabled=!inp.value.trim();};
+  inp.onkeydown=function(e){if(e.key==='Enter'&&inp.value.trim())btn.click();};
+  btn.onclick=function(){addBook(inp.value.trim(),sheetPic);};
+  $('newPic').onclick=function(){$('photo').click();};
+  $('scrim').classList.add('on');$('sheet').classList.add('on');
+}
+function closeSheet(){$('scrim').classList.remove('on');$('sheet').classList.remove('on');}
+$('scrim').onclick=closeSheet;
+$('photo').onchange=function(e){
+  var f=e.target.files[0];if(!f)return;
+  var img=new Image(),url=URL.createObjectURL(f);
+  img.onload=function(){var c=document.createElement('canvas'),s=160,m=Math.min(img.width,img.height);c.width=c.height=s;
+    c.getContext('2d').drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,s,s);
+    try{sheetPic=c.toDataURL('image/jpeg',.8);}catch(_){sheetPic=null;}
+    URL.revokeObjectURL(url);var p=$('newPic');if(p&&sheetPic){p.style.backgroundImage='url('+sheetPic+')';p.innerHTML='';}};
+  img.src=url;e.target.value='';
+};
+
+/* ---------- 蘿蔔田＋這週 ---------- */
+function renderField(){
+  var el=$('field'),inSoil=mem.books.filter(function(b){return !b.pulled;}),out=mem.books.filter(function(b){return b.pulled;});
+  var total=mem.logs.length;
+  var h='<h1>蘿蔔田</h1><p class="lead">'+(total?mem.books.length+' 本書，一共念了 '+total+' 次':'念完第一次，這裡就會有東西')+'</p>';
+  h+='<h2>還在土裡</h2>';
+  if(inSoil.length){h+='<div class="grid">';inSoil.forEach(function(b){var n=countOf(b.id);h+='<button class="plot" data-id="'+b.id+'">'+plantSVG(n)+'<div class="nm">'+esc(b.name)+'</div><div class="ct">'+n+' 次</div></button>';});h+='</div>';}
+  else h+='<div class="card empty">現在沒有在土裡的書。</div>';
+  h+='<h2>拔起來的</h2>';
+  if(out.length){h+='<div class="card"><div class="wall">';out.sort(function(a,b){return a.pulledAt-b.pulledAt;}).forEach(function(b){var n=countOf(b.id);h+='<div class="r">'+pulledSVG(n)+'<div class="nm">'+esc(b.name)+'</div><div class="ct">'+n+' 次</div></div>';});h+='</div></div>';}
+  else h+='<div class="card empty">她能搶先把整本念完的那天，就可以拔第一根。</div>';
+  h+='<h2>這週</h2>'+weekHTML();
+  el.innerHTML=h;
+  Array.prototype.forEach.call(el.querySelectorAll('.plot'),function(p){p.onclick=function(){mem.current=p.dataset.id;save();justDone=null;sel={};renderMain();go(1);};});
+}
+function weekHTML(){
+  var since=Date.now()-7*864e5,wk=mem.logs.filter(function(l){return l.ts>=since;});
+  if(!wk.length)return '<div class="card empty">這週還沒有紀錄。</div>';
+  var per={},h='<div class="card">';
+  wk.forEach(function(l){per[l.bookId]=(per[l.bookId]||0)+1;});
+  var line=Object.keys(per).map(function(id){var b=book(id);return b?'《'+esc(b.name)+'》'+per[id]+' 次':'';}).filter(Boolean).join('、');
+  h+='<div class="rev"><b>念了 '+wk.length+' 次</b><div class="q">'+line+'</div></div>';
+  var firsts=[];
+  mem.books.forEach(function(b){GOOD.forEach(function(s){var ls=logsOf(b.id).filter(function(l){return l.signals.indexOf(s[0])>=0;});if(ls.length&&ls[0].ts>=since)firsts.push('《'+esc(b.name)+'》'+s[1]);});});
+  if(firsts.length)h+='<div class="rev"><b>第一次出現</b><div class="q">'+firsts.slice(0,6).join('、')+'</div></div>';
+  mem.books.forEach(function(b){BAD.forEach(function(s){var c=sigCount(b.id,s[0]);if(c>=2){
+    h+='<div class="rev"><b>《'+esc(b.name)+'》'+s[1]+'，出現 '+c+' 次</b><div class="q">先看念法：念到要她接的地方，有停下來等嗎？是不是她累了的時段？</div><div class="q">都不是的話，再看是整本都這樣，還是只有某一頁。</div></div>';}});});
+  return h+'</div>';
+}
+
+/* ---------- 設定 ---------- */
+function renderSettings(){
+  var el=$('settings');
+  el.innerHTML='<h1>設定</h1><p class="lead">手感原型，資料只存在這支手機</p>'+
+  '<div class="card"><label class="row"><span>她的名字</span><input id="child" type="text" placeholder="可以不填" value="'+esc(mem.child||'')+'" style="margin-left:auto;text-align:right;border:0;background:none;outline:none;width:50%;color:var(--sub)"></label>'+
+  '<div class="row"><span>睡前提醒</span><span class="switch"></span></div></div><p class="note">提醒和觸覺回饋要等原生版。網頁原型做不到。</p>'+
+  '<h2>念法，五個字</h2><div class="card five"><div><b>等</b>念到要她接的地方，停三秒</div><div><b>接</b>她說什麼都接住，不說「不對」</div><div><b>加</b>把她的話多加一個詞說回去</div><div><b>誇</b>誇具體的事</div><div><b>再</b>請她再說一次，不說也沒關係</div></div><p class="note">前三次只念不問。主畫面一次只會給你一個字。</p>'+
+  '<h2>資料</h2><div class="card"><button class="row" id="exp"><span>匯出備份</span><span class="chev">›</span></button><button class="row" id="imp"><span>匯入備份</span><span class="chev">›</span></button><button class="row" id="demo"><span>載入示範資料</span><span class="val">看一年後的樣子</span></button><button class="row danger" id="wipe"><span>清掉全部資料</span></button></div><p class="note">刪掉主畫面上的捷徑，資料會一起不見。要刪之前先匯出。</p>';
+  $('child').onchange=function(e){mem.child=e.target.value.trim();save();};
+  $('exp').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(mem)],{type:'application/json'}));a.download='蘿讀備份-'+new Date().toISOString().slice(0,10)+'.json';a.click();};
+  $('imp').onclick=function(){$('importer').click();};
+  var armed=false;
+  $('wipe').onclick=function(){var s=this.querySelector('span');if(!armed){armed=true;s.textContent='再按一次，真的清掉';return;}mem={books:[],logs:[],current:null,child:''};save();justDone=null;sel={};renderAll();go(1);};
+  $('demo').onclick=function(){demo();renderAll();go(0);};
+}
+$('importer').onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(d&&d.books&&d.logs){mem=d;save();justDone=null;renderAll();go(1);}}catch(_){}};r.readAsText(f);e.target.value='';};
+function demo(){
+  var now=Date.now(),D=864e5,bs=[['小芽的鞋子',47,true],['擠擠床',31,true],['好餓的毛毛蟲',22,false],['小芽洗澎澎',12,false],['這是什麼？',5,false],['球掉了',2,false]];
+  mem={books:[],logs:[],current:null,child:mem.child||''};
+  bs.forEach(function(x,i){var id='d'+i;mem.books.push({id:id,name:x[0],cover:null,pulled:x[2],pulledAt:x[2]?now-(40-i*20)*D:undefined});
+    for(var k=0;k<x[1];k++){var sg=[];if(k>3&&k%2)sg.push('jie');if(k>5&&k%3===0)sg.push('zhi');if(k>8&&k%4===0)sg.push('zai');if(x[1]>20&&k>x[1]-4)sg.push('bei');if(i===3&&(k===6||k===9))sg.push('skip');
+      mem.logs.push({id:id+'-'+k,bookId:id,ts:now-Math.round((x[1]-k)*(i<2?3.5:1.3)*D)-i*3600e3,signals:sg});}});
+  mem.current='d2';save();justDone=null;sel={};
+}
+
+/* ---------- 換頁 ---------- */
+var pager=$('pager');
+function go(i,instant){pager.scrollTo({left:i*pager.clientWidth,behavior:instant?'auto':'smooth'});}
+function syncDots(){var i=Math.round(pager.scrollLeft/pager.clientWidth);Array.prototype.forEach.call($('dots').children,function(d,k){d.classList.toggle('on',k===i);});}
+pager.addEventListener('scroll',syncDots,{passive:true});
+Array.prototype.forEach.call($('dots').children,function(d){d.onclick=function(){go(+d.dataset.i);};});
+window.addEventListener('resize',function(){syncDots();});
+function renderAll(){renderMain();renderField();renderSettings();}
+renderAll();
+go(1,true);syncDots();
+window.__luodu={demo:function(){demo();renderAll();},go:go};
+})();
+</script>
+</body>
+</html>
